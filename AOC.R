@@ -3,26 +3,24 @@ library(rgdal)
 library(sp)
 library(RColorBrewer)
 library(classInt)
-france<-readOGR("../../Documents/vieux-Documents/cartographie/geofla/COMMUNES/","COMMUNE")
-dataigp<-read.csv2("../../Downloads/2015-03-24-COMAGRI_-_Communes_Aires_IG_.csv",stringsAsFactors=F)
-dataaoc<-read.csv2("../../Downloads/2015-03-24-COMAGRI_-_Communes_Aires_AO.csv",stringsAsFactors=F)
+france<-readOGR("../../Documents/vieux-Documents/cartographie/geofla/COMMUNES/","COMMUNE") # fichier geofla communes (open data)
+dataigp<-read.csv2("../../Downloads/2015-03-24-COMAGRI_-_Communes_Aires_IG_.csv",stringsAsFactors=F) # fichier IGP sur data.gouv.fr
+dataaoc<-read.csv2("../../Downloads/2015-03-24-COMAGRI_-_Communes_Aires_AO.csv",stringsAsFactors=F) # fichier AOC sur data.gouv.fr
 
-europe<-readOGR("NUTS_2010_03M_SH/Data","NUTS_RG_03M_2010") # données EUROSTAT
+europe<-readOGR("NUTS_2010_03M_SH/Data","NUTS_RG_03M_2010") # données EUROSTAT : chercher NUTS Eurostat
 frontieres<-subset(europe,europe$NUTS_ID=="FR") # on garde juste la France 
-frontieres<-spTransform (frontieres, CRS ("+init=epsg:2154") ) # change la projection en LAMBERT
-head(data)
+frontieres<-spTransform (frontieres, CRS ("+init=epsg:2154") ) # change la projection en LAMBERT pour correspondre avec geofla
+# le code suivant n'est pas super optimisé
 dataigp$CID<-sprintf("%05s",dataigp$CI)
 dataigp$NOMBRE<-1
 dataigp<-aggregate(NOMBRE~CID,data=dataigp,sum)
 dataaoc$CID<-sprintf("%05s",dataaoc$CI)
 dataaoc$NOMBRE<-1
 dataaoc<-aggregate(NOMBRE~CID,data=dataaoc,sum)
-data<-rbind(dataigp,dataaoc)
+data<-rbind(dataigp,dataaoc) # on combine les deux fichiers et il n'est pas très malin d'appeler ça "data"
 data<-aggregate(NOMBRE~CID,data=data,sum)
 
-#df$NUM_DEP<-sprintf("%02d",df$V3)
-summary(france)
-m <- match(france$INSEE_COM, data$CID)
+m <- match(france$INSEE_COM, data$CID) # pour faire le lien entre france et les données
 france$VAR <- data$NOMBRE[m]
 nclr <- 11
 plotclr <- brewer.pal(nclr,"RdYlGn")[nclr:1] 
@@ -39,12 +37,10 @@ title(sub="Source : INAO sur data.gouv.fr | Réalisation Baptiste Coulmont \nhtt
 legend(090224,6711753,legend=c(names(attr(colcode,"table"))[nclr:1],"N.A."), fill=c(attr(colcode, "palette")[nclr:1],"#999999"), cex=1, bty="n")
 dev.off()
 
-head(data)
-
-summary(france)
+# même chose mais on change la variable cartographiée
 m<-match(france$INSEE_COM,data$CID)
 france$VAR<-data$NOMBRE[m]
-france$VAR<-100*france$VAR/france$SUPERFICIE
+france$VAR<-100*france$VAR/france$SUPERFICIE # on s'intéresse au nombre d'IGP par km carré par commune
 nclr <- 7
 plotclr <- brewer.pal(nclr,"RdYlGn")[nclr:1] 
 class <- classIntervals(france$VAR, nclr, style="quantile",dataPrecision=1)
